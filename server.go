@@ -19,7 +19,7 @@ func New(router *fasthttprouter.Router, prefix string) *Server {
 	return &Server{router, prefix}
 }
 
-func (s *Server) Registry(path, method string, handle fasthttp.RequestHandler) {
+func (s *Server) Registry(path, method string, handle fasthttp.RequestHandler) *Server {
 	path = fmt.Sprintf("%v%v", s.prefix, path)
 	switch method {
 	case "GET":
@@ -37,6 +37,7 @@ func (s *Server) Registry(path, method string, handle fasthttp.RequestHandler) {
 	case "PATCH":
 		s.router.PATCH(path, handle)
 	}
+	return s
 }
 
 func (s *Server) Handler(ctx *fasthttp.RequestCtx) {

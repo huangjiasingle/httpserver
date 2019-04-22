@@ -39,8 +39,7 @@ func Pong(ctx *fasthttp.RequestCtx) {
 }
 
 func registry(server *httpserver.Server) {
-	server.Registry("/ping", "GET", Ping)
-	server.Registry("/pong", "POST", Pong)
+	server.Registry("/ping", "GET", Ping).Registry("/pong", "POST", Pong)
 }
 
 ```
