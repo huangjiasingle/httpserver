@@ -2,22 +2,20 @@ package httpserver
 
 import (
 	"fmt"
-	"log"
-	"os"
 	"time"
 
-	"github.com/buaazp/fasthttprouter"
+	"k8s.io/klog"
+
+	"github.com/fasthttp/router"
 	"github.com/valyala/fasthttp"
 )
 
-var std = log.New(os.Stderr, "", log.LstdFlags)
-
 type Server struct {
-	router *fasthttprouter.Router
+	router *router.Router
 	prefix string
 }
 
-func New(router *fasthttprouter.Router, prefix string) *Server {
+func New(router *router.Router, prefix string) *Server {
 	return &Server{router, prefix}
 }
 
@@ -46,7 +44,7 @@ func (s *Server) Handler(ctx *fasthttp.RequestCtx) {
 	t := time.Now()
 	s.router.Handler(ctx)
 	sub := time.Now().Sub(t)
-	std.Output(1, fmt.Sprintf("%s  %v  %s", ctx.String(), ctx.Response.StatusCode(), sub))
+	klog.V(2).Infof("%s  %v  %s", ctx.String(), ctx.Response.StatusCode(), sub)
 }
 
 func (s *Server) ServerHTTP(address string) error {
