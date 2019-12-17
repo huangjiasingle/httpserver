@@ -11,12 +11,13 @@ import (
 )
 
 type Server struct {
-	router *router.Router
-	prefix string
+	router      *router.Router
+	Interceptor *func(ctx *fasthttp.RequestCtx) error
+	prefix      string
 }
 
 func New(router *router.Router, prefix string) *Server {
-	return &Server{router, prefix}
+	return &Server{router, nil, prefix}
 }
 
 func (s *Server) Registry(path, method string, handle fasthttp.RequestHandler) *Server {
@@ -40,13 +41,66 @@ func (s *Server) Registry(path, method string, handle fasthttp.RequestHandler) *
 	return s
 }
 
-func (s *Server) Handler(ctx *fasthttp.RequestCtx) {
+/* func (s *Server) Handler(ctx *fasthttp.RequestCtx) {
+	var sub time.Duration
+
+	defer func() {
+		klog.V(2).Infof("%s  %v  %s", ctx.String(), ctx.Response.StatusCode(), sub)
+	}()
+
 	t := time.Now()
+	if !(string(ctx.RequestURI()) == "/api/v1/users/login") {
+		if s.Interceptor != nil {
+			(*s.Interceptor)(ctx)
+			sub = time.Now().Sub(t)
+			if ctx.Response.StatusCode() == 403 {
+				return
+			}
+		}
+
+		cluster := string(ctx.Request.Header.Peek("cluster"))
+		c, err := serverapi.GetCluster(cluster)
+		if err != nil {
+			ctx.Error(fmt.Sprintf("query cluster error %v", err.Error()), 400)
+			return
+		}
+		if !c.IsMaster {
+			ctx.Request.SetHost(c.Endpoint)
+			fasthttp.Do(&ctx.Request, &ctx.Response)
+			sub = time.Now().Sub(t)
+		} else {
+			s.router.Handler(ctx)
+			sub = time.Now().Sub(t)
+		}
+	} else {
+		s.router.Handler(ctx)
+		sub = time.Now().Sub(t)
+	}
+} */
+
+func (s *Server) Handler(ctx *fasthttp.RequestCtx) {
+	var sub time.Duration
+
+	defer func() {
+		klog.V(2).Infof("%s  %v  %s", ctx.String(), ctx.Response.StatusCode(), sub)
+	}()
+
+	t := time.Now()
+	if s.Interceptor != nil {
+		if (*s.Interceptor)(ctx) != nil {
+			sub = time.Now().Sub(t)
+			return
+		}
+	}
+
 	s.router.Handler(ctx)
-	sub := time.Now().Sub(t)
-	klog.V(2).Infof("%s  %v  %s", ctx.String(), ctx.Response.StatusCode(), sub)
+	sub = time.Now().Sub(t)
 }
 
 func (s *Server) ServerHTTP(address string) error {
 	return fasthttp.ListenAndServe(address, s.Handler)
+}
+
+func (s *Server) AddInterceptor(interceptor func(ctx *fasthttp.RequestCtx) error) {
+	s.Interceptor = &interceptor
 }
